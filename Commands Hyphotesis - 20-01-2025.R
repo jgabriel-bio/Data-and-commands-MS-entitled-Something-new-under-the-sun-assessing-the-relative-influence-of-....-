@@ -10,11 +10,65 @@ library(car)
 library(glmmTMB)
 library(lmtest)
 library(cowplot)
+library(tidyr)
+
+
+####Figure males x females per month####
+
+#mean + EP per month and sex
+
+data_summary <- data_long %>%
+  group_by(month, sex) %>%
+  summarise(
+    mean_n = mean(n_individuals, na.rm = TRUE),
+    se_n = sd(n_individuals, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  )
+
+tiff("Figure 1.tiff", 
+     width = 2000, height = 1500, res = 300, compression = "lzw")
+ggplot(
+  data_summary,
+  aes(
+    x = month,
+    y = mean_n,
+    group = sex,
+    color = sex
+  )
+) +
+  geom_line(size = 1) +             
+  geom_point(size = 3) +
+  geom_errorbar(
+    aes(
+      ymin = mean_n - se_n,
+      ymax = mean_n + se_n
+    ),
+    width = 0.2
+  ) +
+  scale_color_manual(
+    values = c(
+      "Male" = "blue",
+      "Female" = "orange"
+    )
+  ) +
+  labs(
+    x = "Month",
+    y = "Average number of individuals"
+  ) +
+  theme_classic() +
+  theme(
+    legend.title = element_blank(),
+    axis.text = element_text(color = "black"),
+    axis.title = element_text(color = "black"),
+    axis.line = element_line(color = "black")
+  )
+dev.off()
+
 
 ####Figure males x females per hour with 0 values####
 
 # Data frame with mean and variance of number of males---
-
+View(data_summary_both)
 data_summary_both <- data %>%
   group_by(hour) %>%
   summarise(
@@ -32,11 +86,11 @@ data_summary_both <- data %>%
   )
 
 #Creating figure
-tiff("Figure S2.tiff", 
+tiff("Figure 2.tiff", 
      width = 2000, height = 1500, res = 300, compression = "lzw")
 ggplot() +
   
-  # --- MACHOS (laranja) ---
+  # --- Males (orange) ---
   geom_line(
     data = data_summary_both,
     aes(x = hour, y = mean_males),
@@ -60,7 +114,7 @@ ggplot() +
     color = "orange"
   ) +
   
-  # --- FÊMEAS (azul) ---
+  # --- Females (blue) ---
   geom_line(
     data = data_summary_both,
     aes(x = hour, y = mean_females),
@@ -99,96 +153,6 @@ ggplot() +
     axis.line = element_line(color = "black")
   )
 dev.off()
-
-####Figure males x females per hour without 0 values####
-
-#Filtering 0s
-data_filtered <- data %>%
-  filter(
-    num_territories_occupied != 0,
-    total_female_presence != 0
-  )
-
-#Calculating means and standard error bars
-data_summary_both <- data_filtered %>%
-  group_by(hour) %>%
-  summarise(
-    n_males    = sum(!is.na(num_territories_occupied)),
-    mean_males = mean(num_territories_occupied, na.rm = TRUE),
-    sd_males   = sd(num_territories_occupied, na.rm = TRUE),
-    
-    n_females    = sum(!is.na(total_female_presence)),
-    mean_females = mean(total_female_presence, na.rm = TRUE),
-    sd_females   = sd(total_female_presence, na.rm = TRUE)
-  ) %>%
-  mutate(
-    se_males   = sd_males / sqrt(n_males),
-    se_females = sd_females / sqrt(n_females)
-  )
-
-#Creating figure
-tiff("Figure 1.tiff", 
-     width = 2000, height = 1500, res = 300, compression = "lzw")
-ggplot() +
-  
-  # MACHOS (laranja)
-  geom_line(
-    data = data_summary_both,
-    aes(x = hour, y = mean_males),
-    color = "orange", size = 1
-  ) +
-  geom_point(
-    data = data_summary_both,
-    aes(x = hour, y = mean_males),
-    color = "orange", size = 3
-  ) +
-  geom_errorbar(
-    data = data_summary_both,
-    aes(
-      x = hour,
-      ymin = mean_males - se_males,
-      ymax = mean_males + se_males
-    ),
-    width = 0.2, color = "orange"
-  ) +
-  
-  # FÊMEAS (azul)
-  geom_line(
-    data = data_summary_both,
-    aes(x = hour, y = mean_females),
-    color = "blue", size = 1
-  ) +
-  geom_point(
-    data = data_summary_both,
-    aes(x = hour, y = mean_females),
-    color = "blue", size = 3
-  ) +
-  geom_errorbar(
-    data = data_summary_both,
-    aes(
-      x = hour,
-      ymin = mean_females - se_females,
-      ymax = mean_females + se_females
-    ),
-    width = 0.2, color = "blue"
-  ) +
-  
-  labs(
-    x = "Hour of the day",
-    y = "Average number of individuals",
-    title = ""
-  ) +
-  
-  scale_x_continuous(breaks = unique(data_summary_both$hour)) +
-  
-  theme_classic() +
-  theme(
-    axis.text = element_text(color = "black"),
-    axis.title = element_text(color = "black"),
-    axis.line = element_line(color = "black")
-  )
-dev.off()
-
 
 
 ####Testing the hypotheses####
