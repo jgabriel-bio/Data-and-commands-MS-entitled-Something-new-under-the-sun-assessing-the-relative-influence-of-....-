@@ -3,7 +3,6 @@ data=read.csv2('data_complete.csv',h=T,stringsAsFactors = T,dec=',')
 
 #Packages
 library(ggplot2)
-library(ggridges)
 library(dplyr)
 library(ggdist)
 library(car)
@@ -11,7 +10,6 @@ library(glmmTMB)
 library(lmtest)
 library(cowplot)
 library(tidyr)
-
 
 ####Figure males x females per month####
 
@@ -158,7 +156,7 @@ dev.off()
 ####Testing the hypotheses####
 summary(data)
 
-#Hip. 1: Light radiation is the main determinant of territorial behavior investment by males
+#Hip. 1: Sunlight is the main determinant of territorial behavior investment by males
 #Hip. 2: Temperature is the main determinant of mate search investment by females
 
 #GHI represents - Clear sky GHI. Clear sky global irradiation on horizontal plane at ground level (Wh/m2) - A LIGHT RADIATION INTENSITY PROXY
@@ -197,44 +195,44 @@ print(vif_raw)
 #Poisson model altered in zero (maintaining the random effect)
 
 # Zero-inflated Poisson with random effects
-model_zip_male <- glmmTMB(num_territories_occupied ~ poly(temperature1, 2) +  poly(GHI1, 2) + poly(temperature1, 2) * poly(GHI1, 2) + (1|date), 
+model_zip_male <- glmmTMB(num_territories_occupied ~ poly(temperature1, 2) +  poly(GHI1, 2) + poly(temperature1, 2) * poly(GHI1, 2) + (1|date) + (1|hour), 
                           ziformula = ~1,  # zero-inflation formula
                           family = poisson,
                           data = data)
 summary(model_zip_male)
 
 # Zero-inflated Poisson null model
-model_zip_male_H0 <- glmmTMB(num_territories_occupied ~ 1 + (1|date), 
+model_zip_male_H0 <- glmmTMB(num_territories_occupied ~ 1 + (1|date) + (1|hour), 
                              ziformula = ~1,  # zero-inflation formula
                              family = poisson,
                              data = data)
 
-anova(model_zip_male, model_zip_male_H0, test="Chi") #p>0,05
+anova(model_zip_male, model_zip_male_H0, test="Chi") #p<0,05
 #The model is better than the null model, therefore the variance of response variable is explained by one of the predictors
 #I compared the models to identify the main determinant of this variation
 
 
 # Zero-inflated Poisson without interaction
-model_zip_male_v2 <- glmmTMB(num_territories_occupied ~ poly(temperature1, 2) + poly(GHI1, 2) + (1|date), 
+model_zip_male_v2 <- glmmTMB(num_territories_occupied ~ poly(temperature1, 2) + poly(GHI1, 2) + (1|date)+ (1|hour), 
                                ziformula = ~1,  # zero-inflation formula
                                family = poisson,
                                data = data)
 summary(model_zip_male_v2)
 
-anova(model_zip_male_v2, model_zip_male, test="Chi") #p=0,15, this value indicates that GHI * temperature is not important for the model
+anova(model_zip_male_v2, model_zip_male, test="Chi") #p=0,56, this value indicates that GHI * temperature is not important for the model
 
 
-# Zero-inflated Poisson without light radiation
-model_zip_male_v3 <- glmmTMB(num_territories_occupied ~ poly(temperature1, 2) +  (1|date), 
+# Zero-inflated Poisson without sunlight
+model_zip_male_v3 <- glmmTMB(num_territories_occupied ~ poly(temperature1, 2) +  (1|date)+ (1|hour), 
                              ziformula = ~1,  # zero-inflation formula
                              family = poisson,
                              data = data)
 
 
-anova(model_zip_male_v2, model_zip_male_v3, test="Chi") #p=0,02, this value indicates that GHI is important for the model
+anova(model_zip_male_v2, model_zip_male_v3, test="Chi") #p=0,04, this value indicates that GHI is important for the model
 
 # Zero-inflated Poisson without temperature
-model_zip_male_v4 <- glmmTMB(num_territories_occupied ~ poly(GHI1, 2) + (1|date), 
+model_zip_male_v4 <- glmmTMB(num_territories_occupied ~ poly(GHI1, 2) + (1|date) + (1|hour), 
                              ziformula = ~1,  # zero-inflation formula
                              family = poisson,
                              data = data)
@@ -243,11 +241,11 @@ anova(model_zip_male_v4, model_zip_male_v2, test="Chi") #p<0,0005, this value in
 
 ######Measuring the effect of each variable#### 
 
-model_zip_male_v4 <- glmmTMB(num_territories_occupied ~ poly(GHI1, 2) + poly(temperature1, 2) +(1|date), 
+model_zip_male_v4 <- glmmTMB(num_territories_occupied ~ poly(GHI1, 2) + poly(temperature1, 2) +(1|date) + (1|hour) , 
                              ziformula = ~1,  # zero-inflation formula
                              family = poisson,
                              data = data)
-
+anova(model_zip_male_v4, model_zip_male_H0, test="Chi")
 #Both temperature and GHI predicted the number of males in territories variance(). However, the temperature had a R2 of , while GHI had a R2 of.
 summary(model_zip_male_v4)
 #estimated coefficients for the linear and quadratic terms, along with their corresponding p-values and confidence intervals
@@ -264,7 +262,7 @@ mcfadden_r2 <- function(model, null_model) {
 
 # Null model (only intercept + random effect)
 null_model <- glmmTMB(
-  num_territories_occupied ~ 1 + (1 | date),
+  num_territories_occupied ~ 1 + (1 | date) + (1 | hour),
   ziformula = ~1,
   family = poisson,
   data = data
@@ -272,7 +270,7 @@ null_model <- glmmTMB(
 
 # Full model
 model_zip_male <- glmmTMB(
-  num_territories_occupied ~ poly(temperature1, 2) + poly(GHI1, 2) + (1 | date),
+  num_territories_occupied ~ poly(temperature1, 2) + poly(GHI1, 2) + (1 | date) + (1 | hour),
   ziformula = ~1,
   family = poisson,
   data = data
@@ -280,7 +278,7 @@ model_zip_male <- glmmTMB(
 
 # Model with only temperature
 model_temp <- glmmTMB(
-  num_territories_occupied ~ poly(temperature1, 2) + (1 | date),
+  num_territories_occupied ~ poly(temperature1, 2) + (1 | date) + (1 | hour),
   ziformula = ~1,
   family = poisson,
   data = data
@@ -288,7 +286,7 @@ model_temp <- glmmTMB(
 
 # Model with only GHI
 model_GHI <- glmmTMB(
-  num_territories_occupied ~ poly(GHI1, 2) + (1 | date),
+  num_territories_occupied ~ poly(GHI1, 2) + (1 | date) + (1 | hour),
   ziformula = ~1,
   family = poisson,
   data = data
@@ -313,7 +311,7 @@ data.frame(
 
 #Model without temperature scaled to create the figure
 # Zero-inflated Poisson without UV radiation
-model_zip_male_v5 <- glmmTMB(num_territories_occupied ~ poly(temperature, 2) + (1|date), 
+model_zip_male_v5 <- glmmTMB(num_territories_occupied ~ poly(temperature, 2) + (1|date) + (1|hour) , 
                              ziformula = ~1,  # zero-inflation formula
                              family = poisson,
                              data = data)
@@ -381,7 +379,7 @@ print(plot1)
 
 #Model without GHI scaled to create the figure
 # Zero-inflated Poisson without temperature
-model_zip_male_v6 <- glmmTMB(num_territories_occupied ~ poly(GHI, 2) + (1|date), 
+model_zip_male_v6 <- glmmTMB(num_territories_occupied ~ poly(GHI, 2) + (1|date) + (1|hour), 
                              ziformula = ~1,  # zero-inflation formula
                              family = poisson,
                              data = data)
@@ -461,57 +459,57 @@ print(vif_raw)
 #As I collected excess of zeros in the response variable (count), I decided to use a zero-inflated model
 
 # Zero-inflated Poisson with random effects
-model_zip_female <- glmmTMB(total_female_presence ~ poly(temperature1, 2) +  poly(GHI1, 2) + poly(temperature1, 2) * poly(GHI1, 2) + (1|date), 
+model_zip_female <- glmmTMB(total_female_presence ~ poly(temperature1, 2) +  poly(GHI1, 2) + poly(temperature1, 2) * poly(GHI1, 2) + (1|date) + (1|hour), 
                             ziformula = ~1,  # zero-inflation formula
                             family = poisson,
                             data = data)
 summary(model_zip_female)
 
 # Zero-inflated Poisson null model
-model_zip_female_H0 <- glmmTMB(total_female_presence ~ 1 + (1|date), 
+model_zip_female_H0 <- glmmTMB(total_female_presence ~ 1 + (1|date) + (1|hour) , 
                                ziformula = ~1,  # zero-inflation formula
                                family = poisson,
                                data = data)
 
-anova(model_zip_female, model_zip_female_H0, test="Chi") #p>0,005
+anova(model_zip_female, model_zip_female_H0, test="Chi") #p<0,005
 #The model is better than the null model, therefore the variance of response variable is explained by one of the predictors
 #I compared the models to identify the main determinant of this variation
 
 # Zero-inflated Poisson without interaction
-model_zip_female_v2 <- glmmTMB(total_female_presence ~ poly(temperature1, 2) + poly(GHI1, 2) + (1|date), 
+model_zip_female_v2 <- glmmTMB(total_female_presence ~ poly(temperature1, 2) + poly(GHI1, 2) + (1|date) + (1|hour), 
                                ziformula = ~1,  # zero-inflation formula
                                family = poisson,
                                data = data)
 
 
-anova(model_zip_female_v2, model_zip_female, test="Chi") #p=0,48, this value indicates that GHI * temperature is not important for the model
+anova(model_zip_female_v2, model_zip_female, test="Chi") #p=0,85, this value indicates that GHI * temperature is not important for the model
 
 # Zero-inflated Poisson without temperature
-model_zip_female_v3 <- glmmTMB(total_female_presence ~ poly(GHI1, 2) + (1|date), 
+model_zip_female_v3 <- glmmTMB(total_female_presence ~ poly(GHI1, 2) + (1|date) + (1|hour) , 
                                ziformula = ~1,  # zero-inflation formula
                                family = poisson,
                                data = data)
 anova(model_zip_female_v3, model_zip_female, test="Chi") #Temperature is important
-#p<0,0005, this value indicate that temperature explains number of territories occupied
+#p<0,006, this value indicate that temperature explains number of territories occupied
 
 # Zero-inflated Poisson without GHI
-model_zip_female_v4 <- glmmTMB(total_female_presence ~ poly(temperature1, 2) + (1|date), 
+model_zip_female_v4 <- glmmTMB(total_female_presence ~ poly(temperature1, 2) + (1|date)  + (1|hour), 
                                ziformula = ~1,  # zero-inflation formula
                                family = poisson,
                                data = data)
 summary(model_zip_female_v4)
 anova(model_zip_female_v4, model_zip_female, test="Chi") #GHI is not important
-#p=0,32, this value indicate that temperature explains number of territories occupied
+#p=0,77, this value indicate that temperature explains number of territories occupied
 
 
 ######Measuring the effect of each variable#### 
 
 #Model with both ghi and temperature
-model_zip_female_v5 <- glmmTMB(total_female_presence ~ poly(temperature1, 2) + poly(GHI1, 2) + (1|date), 
+model_zip_female_v5 <- glmmTMB(total_female_presence ~ poly(temperature1, 2) + poly(GHI1, 2) + (1|date) + (1|hour), 
                                ziformula = ~1,  # zero-inflation formula
                                family = poisson,
                                data = data)
-
+anova(model_zip_female_v5, model_zip_female_H0, test="Chi")
 summary(model_zip_female_v5)
 #estimated coefficients for the linear and quadratic terms, along with their corresponding p-values and confidence intervals
 #B linear effect = -10.59 - B quadratic effect = -24.66
@@ -528,7 +526,7 @@ mcfadden_r2 <- function(model, null_model) {
 
 # Null model (only intercept + random effect)
 null_model <- glmmTMB(
-  total_female_presence ~ 1 + (1 | date),
+  total_female_presence ~ 1 + (1 | date) + (1 | hour),
   ziformula = ~1,
   family = poisson,
   data = data
@@ -536,7 +534,7 @@ null_model <- glmmTMB(
 
 # Full model
 model_zip_male <- glmmTMB(
-  total_female_presence ~ poly(temperature1, 2) + poly(GHI1, 2) + (1 | date),
+  total_female_presence ~ poly(temperature1, 2) + poly(GHI1, 2) + (1 | date)+ (1 | hour),
   ziformula = ~1,
   family = poisson,
   data = data
@@ -544,7 +542,7 @@ model_zip_male <- glmmTMB(
 
 # Model with only temperature
 model_temp <- glmmTMB(
-  total_female_presence ~ poly(temperature1, 2) + (1 | date),
+  total_female_presence ~ poly(temperature1, 2) + (1 | date)+ (1 | hour),
   ziformula = ~1,
   family = poisson,
   data = data
@@ -552,7 +550,7 @@ model_temp <- glmmTMB(
 
 # Model with only GHI
 model_GHI <- glmmTMB(
-  total_female_presence ~ poly(GHI1, 2) + (1 | date),
+  total_female_presence ~ poly(GHI1, 2) + (1 | date)+ (1 | hour),
   ziformula = ~1,
   family = poisson,
   data = data
@@ -574,7 +572,7 @@ data.frame(
 
 #Model without temperature escalted to create the figure
 # Zero-inflated Poisson without UV radiation
-model_zip_female_v4 <- glmmTMB(total_female_presence ~ poly(temperature, 2) + (1|date), 
+model_zip_female_v4 <- glmmTMB(total_female_presence ~ poly(temperature, 2) + (1|date) + (1|hour), 
                                ziformula = ~1,  # zero-inflation formula
                                family = poisson,
                                data = data)
@@ -646,7 +644,7 @@ plot4 <- ggplot() +
              aes(x = GHI, y = total_female_presence),
              alpha = 0.4, size = 2, color = "steelblue") +
   # Labels
-  labs(x = "Global horizontal UV irradiance (Wh/m²)", 
+  labs(x = "Global horizontal irradiance (Wh/m²)", 
        y = "",
        title = "") +
   
@@ -682,7 +680,7 @@ combined_plot <- plot_grid(
 
 
 # Save as TIFF
-ggsave("Figure 2.tiff",
+ggsave("Figure 3.tiff",
        combined_plot,
        width = 10,      # largura total em polegadas
        height = 10,     # altura total em polegadas
